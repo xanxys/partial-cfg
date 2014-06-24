@@ -25,7 +25,7 @@ simpleExpr = CFG "expr"
 		[[NonTerminal "digit"]
 		,[NonTerminal "digit", NonTerminal "number"]])
 	,("digit", CFGClause $
-		map (\n->[Terminal $ show n]) [0..9])
+		map (\n->[Terminal $ show n]) [0..2])
 	]
 
 
@@ -79,14 +79,19 @@ optimizeRegex (Selection rs) =
 	where
 		wrapOptional [] = Nothing
 		wrapOptional rs
-			|lang0 `elem` rs = Just $ Optional $ Selection $ filter (/= lang0) rs
-			|otherwise = Just $ Selection rs
+			|lang0 `elem` rs = Just $ Optional $ flattenSelection $ Selection $ filter (/= lang0) rs
+			|otherwise = Just $ flattenSelection $ Selection rs
 		lang0 = Sequence []
 optimizeRegex (Sequence rs) = do
 	rs' <- mapM optimizeRegex rs
 	liftM (flattenSequence . Sequence) $  return rs'
 optimizeRegex (Repetition r) = liftM Repetition (optimizeRegex r)
-optimizeRegex r = return r
+optimizeRegex (RTerminal t) = Just (RTerminal t)
+
+flattenSelection = flattenRegex extractIfSelection Selection
+	where
+		extractIfSelection (Selection rs) = Just rs
+		extractIfSelection _ = Nothing
 
 flattenSequence :: Regex term -> Regex term
 flattenSequence = flattenRegex extractIfSequence Sequence
@@ -113,7 +118,13 @@ showRegex :: Regex String -> String
 showRegex (RTerminal t)
 	|elem t ["(", ")", "|", "+", "*", "[", "]", "^", "\\"] = "\\" ++ t
 	|otherwise = t
-showRegex (Selection rs) = "(" ++ intercalate "|" (map showRegex rs) ++ ")"
+showRegex (Selection rs) =
+	case mapM extractChar rs of
+		Nothing ->  "(" ++ intercalate "|" (map showRegex rs) ++ ")"
+		Just chars -> "[" ++ concat chars ++ "]"
+	where
+		extractChar (RTerminal ch) = Just ch
+		extractChar _ = Nothing
 showRegex (Sequence rs) = concatMap showRegex rs
 showRegex (Repetition r) = showRegex r ++ "*"
 showRegex (Optional r) = showRegex r ++ "?"
@@ -122,5 +133,11 @@ main = do
 	putStrLn "== input"
 	print simpleExpr
 
-	putStrLn $ showRegex $ fromJust $
+	showBoth $ fromJust $
 		optimizeRegex $ convertToRegex 6 simpleExpr
+
+showBoth reg = do
+	putStrLn "== show"
+	print reg
+	putStrLn "== pretty (maybe wrong)"
+	putStrLn $ showRegex reg
