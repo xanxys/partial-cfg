@@ -1,5 +1,7 @@
+import Control.Monad
 import qualified Data.Map as Map
 import Data.List
+import Data.Maybe
 
 data CFG key term = CFG key [(key, CFGClause key term)] deriving(Show, Eq)
 
@@ -27,11 +29,15 @@ simpleExpr = CFG "expr"
 	]
 
 
-data Regex term
-	= RTerminal term
-	| Selection [Regex term]
-	| Sequence [Regex term]
-	| Repetition (Regex term)
+-- | Symbol-based regex.
+-- (i.e. doesn't contain character specific syntax such as [abc])
+data Regex sym
+	= RTerminal sym
+	| Selection [Regex sym]
+	| Sequence [Regex sym]
+	| Repetition (Regex sym)
+	-- Extensions
+	| Optional (Regex sym)
 	deriving(Show, Eq)
 
 
@@ -56,6 +62,52 @@ expandClause dict depth (CFGClause cs) =
 		toTerm (Terminal t) = RTerminal t
 		toTerm (NonTerminal k) = expandClause dict (depth - 1) (dict Map.! k)
 
+-- | Remove empty Sequence and Selection. Result can be Nothing if
+-- the langueage turns out to be empty.
+--
+-- Selection [] = {}
+-- Sequence [] = {""}
+optimizeRegex :: Eq term => Regex term -> Maybe (Regex term)
+optimizeRegex (Selection []) = Nothing
+optimizeRegex (Sequence []) = Nothing
+optimizeRegex (Selection [r]) = optimizeRegex r
+optimizeRegex (Sequence [r]) = optimizeRegex r
+optimizeRegex (Selection rs) =
+	case mapMaybe optimizeRegex rs of
+		[] -> Nothing
+		rs' -> wrapOptional $ nub rs'
+	where
+		wrapOptional [] = Nothing
+		wrapOptional rs
+			|lang0 `elem` rs = Just $ Optional $ Selection $ filter (/= lang0) rs
+			|otherwise = Just $ Selection rs
+		lang0 = Sequence []
+optimizeRegex (Sequence rs) = do
+	rs' <- mapM optimizeRegex rs
+	liftM (flattenSequence . Sequence) $  return rs'
+optimizeRegex (Repetition r) = liftM Repetition (optimizeRegex r)
+optimizeRegex r = return r
+
+flattenSequence :: Regex term -> Regex term
+flattenSequence = flattenRegex extractIfSequence Sequence
+	where
+		extractIfSequence (Sequence rs) = Just rs
+		extractIfSequence _ = Nothing
+
+flattenRegex
+	:: (Regex term -> Maybe [Regex term])
+	-> ([Regex term] -> Regex term)
+	-> Regex term
+	-> Regex term
+flattenRegex extract unextract r = case extract r of
+	Just ls -> unextract $ concatMap (wrapAsList . flattenRegex extract unextract) ls
+	Nothing -> r
+	where
+		wrapAsList r = case extract r of
+			Just ls -> ls
+			Nothing -> [r]
+
+
 -- | TODO: use proper operator precedence to decide when to put parens.
 showRegex :: Regex String -> String
 showRegex (RTerminal t)
@@ -64,12 +116,11 @@ showRegex (RTerminal t)
 showRegex (Selection rs) = "(" ++ intercalate "|" (map showRegex rs) ++ ")"
 showRegex (Sequence rs) = concatMap showRegex rs
 showRegex (Repetition r) = showRegex r ++ "*"
+showRegex (Optional r) = showRegex r ++ "?"
 
 main = do
 	putStrLn "== input"
 	print simpleExpr
 
-	putStrLn "== output(depth=1)"
-	putStrLn $ showRegex $ convertToRegex 1 simpleExpr
-	putStrLn "== output(depth=1)"
-	putStrLn $ showRegex $ convertToRegex 10 simpleExpr
+	putStrLn $ showRegex $ fromJust $
+		optimizeRegex $ convertToRegex 6 simpleExpr
