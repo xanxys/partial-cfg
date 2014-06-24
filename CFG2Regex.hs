@@ -134,7 +134,7 @@ main = do
 	print simpleExpr
 
 	showBoth $ fromJust $
-		optimizeRegex $ convertToRegex 6 simpleExpr
+		optimizeRegex $ convertToRegex 8 simpleExpr
 
 showBoth reg = do
 	putStrLn "== show"
