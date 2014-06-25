@@ -1,3 +1,5 @@
+module CFG2Regex where
+
 import Control.Monad
 import qualified Data.Map as Map
 import Data.List
@@ -34,23 +36,6 @@ data Regex sym
 -- S = T1 T2 S | T3 | T4
 -- but not these:
 -- S = T1 S T2 | T3
-
-
-simpleExpr :: CFG String String
-simpleExpr = CFG "expr"
-	[("expr", CFGClause
-		[[NonTerminal "number"]
-		,[Terminal "(", NonTerminal "expr", Terminal ")"]
-		,[NonTerminal "addition"]])
-	,("addition", CFGClause
-		[[NonTerminal "expr", Terminal "+", NonTerminal "expr"]])
-	,("number", CFGClause
-		[[NonTerminal "digit"]
-		,[NonTerminal "digit", NonTerminal "number"]])
-	,("digit", CFGClause $
-		map (\n->[Terminal $ show n]) [0..2])
-	]
-
 
 
 
@@ -141,16 +126,3 @@ showRegex (Selection rs) =
 showRegex (Sequence rs) = concatMap showRegex rs
 showRegex (Repetition r) = showRegex r ++ "*"
 showRegex (Optional r) = showRegex r ++ "?"
-
-main = do
-	putStrLn "== input"
-	print simpleExpr
-
-	showBoth $ fromJust $
-		optimizeRegex $ convertToRegex 8 simpleExpr
-
-showBoth reg = do
-	putStrLn "== show"
-	print reg
-	putStrLn "== pretty (maybe wrong)"
-	putStrLn $ showRegex reg
