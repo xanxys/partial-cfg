@@ -1,8 +1,8 @@
-
+# Partial CFG
 Convert context free language (with limited nest level)
 to regular language.
 
-== Example ==
+## Example
 
 
 depth=8 regex expansion of simple arithmetic system
@@ -10,9 +10,9 @@ depth=8 regex expansion of simple arithmetic system
 (0|1|2|[012](0|1|2|[012](0|1|2|[012](0|1|2|[012](0|1|2|[012][012]))))|\((0|1|2|[012](0|1|2|[012](0|1|2|[012](0|1|2|[012][012])))|\((0|1|2|[012](0|1|2|[012](0|1|2|[012][012]))|\((0|1|2|[012](0|1|2|[012][012])|\((0|1|2|[012][012]|\([012]\))\)|[012]\+[012])\)|(0|1|2|[012][012]|\([012]\))\+(0|1|2|[012][012]|\([012]\)))\)|(0|1|2|[012](0|1|2|[012][012])|\((0|1|2|[012][012]|\([012]\))\)|[012]\+[012])\+(0|1|2|[012](0|1|2|[012][012])|\((0|1|2|[012][012]|\([012]\))\)|[012]\+[012]))\)|(0|1|2|[012](0|1|2|[012](0|1|2|[012][012]))|\((0|1|2|[012](0|1|2|[012][012])|\((0|1|2|[012][012]|\([012]\))\)|[012]\+[012])\)|(0|1|2|[012][012]|\([012]\))\+(0|1|2|[012][012]|\([012]\)))\+(0|1|2|[012](0|1|2|[012](0|1|2|[012][012]))|\((0|1|2|[012](0|1|2|[012][012])|\((0|1|2|[012][012]|\([012]\))\)|[012]\+[012])\)|(0|1|2|[012][012]|\([012]\))\+(0|1|2|[012][012]|\([012]\))))
 ```
 
-this regex actually does match "(1+2)+(2+0)" (visual result: http://regex101.com/r/vE6kH3)
+this regex *does* match "(1+2)+(2+0)" (visual result: http://regex101.com/r/vE6kH3)
 
 
-Although implementatin is just proof-of-concept, the idea might be usable
+Although current implementatin is just proof-of-concept, the idea might be usable
 for automatically generating syntax highlighter config such as .tmBundle
 for TextMate and Sublime Text (or maybe other editors).
