@@ -10,7 +10,30 @@ data CFGClause key term = CFGClause [[CFGTerm key term]] deriving(Show, Eq)
 data CFGTerm key term
 	= NonTerminal key
 	| Terminal term
+	-- internal use
+	| RegexTerminal (Regex term)
 	deriving(Show, Eq)
+
+-- | Symbol-based regex.
+-- (i.e. doesn't contain character specific syntax such as [abc])
+data Regex sym
+	= RTerminal sym
+	| Selection [Regex sym]
+	| Sequence [Regex sym]
+	| Repetition (Regex sym)
+	-- Extensions
+	| Optional (Regex sym)
+	deriving(Show, Eq)
+
+
+-- how to detect repetition in recursion
+-- find left- or right- form:
+-- these are repetition:
+-- S = S T1 T2 | T3
+-- S = S T1 S | T2
+-- S = T1 T2 S | T3 | T4
+-- but not these:
+-- S = T1 S T2 | T3
 
 
 simpleExpr :: CFG String String
@@ -29,16 +52,6 @@ simpleExpr = CFG "expr"
 	]
 
 
--- | Symbol-based regex.
--- (i.e. doesn't contain character specific syntax such as [abc])
-data Regex sym
-	= RTerminal sym
-	| Selection [Regex sym]
-	| Sequence [Regex sym]
-	| Repetition (Regex sym)
-	-- Extensions
-	| Optional (Regex sym)
-	deriving(Show, Eq)
 
 
 -- | Convert CFG to regex (with given expansion depth).
