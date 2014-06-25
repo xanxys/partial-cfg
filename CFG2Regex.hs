@@ -111,18 +111,31 @@ flattenRegex extract unextract r = case extract r of
 			Nothing -> [r]
 
 
--- | TODO: use proper operator precedence to decide when to put parens.
 showRegex :: Regex String -> String
-showRegex (RTerminal t)
+showRegex = showRegexPrec 0
+
+-- | Show regex with minimal amount of parens.
+-- precedence:
+-- * 10: Optional, Repetition: x?
+-- * 5: Sequence: xyz
+-- * 3: Selection: |
+showRegexPrec :: Int -> Regex String -> String
+showRegexPrec d (RTerminal t)
 	|elem t ["(", ")", "|", "+", "*", "[", "]", "^", "\\"] = "\\" ++ t
 	|otherwise = t
-showRegex (Selection rs) =
+showRegexPrec d (Selection rs) =
 	case mapM extractChar rs of
-		Nothing ->  "(" ++ intercalate "|" (map showRegex rs) ++ ")"
+		Nothing ->  wrapParenIf (d > 3) $ intercalate "|" $ map (showRegexPrec 3) rs
 		Just chars -> "[" ++ concat chars ++ "]"
 	where
 		extractChar (RTerminal ch) = Just ch
 		extractChar _ = Nothing
-showRegex (Sequence rs) = concatMap showRegex rs
-showRegex (Repetition r) = showRegex r ++ "*"
-showRegex (Optional r) = showRegex r ++ "?"
+showRegexPrec d (Sequence rs) = wrapParenIf (d > 5) $
+	concatMap (showRegexPrec 5) rs
+showRegexPrec d (Repetition r) = wrapParenIf (d > 10) $
+	showRegexPrec 10 r ++ "*"
+showRegexPrec d (Optional r) = wrapParenIf (d > 10) $
+	showRegexPrec 10 r ++ "?"
+
+wrapParenIf True s = "(" ++ s ++ ")"
+wrapParenIf False s = s
